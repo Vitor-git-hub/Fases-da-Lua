@@ -86,6 +86,13 @@ export default function App() {
     scene.add(ambientLight);
 
     // --- 3. Objects ---
+    const textureLoader = new THREE.TextureLoader();
+    textureLoader.setCrossOrigin('anonymous');
+
+    // Real textures from Three.js examples (NASA assets)
+    const earthTexture = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_atmos_2048.jpg');
+    const moonTexture = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/moon_1024.jpg');
+
     // Label Sprite Canvas Setup
     const labelCanvas = document.createElement('canvas');
     labelCanvas.width = 512;
@@ -102,98 +109,6 @@ export default function App() {
     labelSprite.scale.set(80, 20, 1); // Reduced scale for a cleaner look
     labelSprite.position.set(0, 28, 0); // Positioned even higher above the moon
 
-    // Create a procedural Earth texture
-    const createEarthTexture = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = 1024;
-      canvas.height = 512;
-      const context = canvas.getContext('2d');
-      if (!context) return null;
-
-      // Deep Ocean
-      context.fillStyle = '#0a2a5a';
-      context.fillRect(0, 0, 1024, 512);
-
-      // Shallows (lighter blue near coasts)
-      context.fillStyle = '#1a4a8c';
-      for (let i = 0; i < 60; i++) {
-        const x = Math.random() * 1024;
-        const y = Math.random() * 512;
-        const w = Math.random() * 250 + 80;
-        const h = Math.random() * 180 + 60;
-        context.beginPath();
-        context.ellipse(x, y, w, h, Math.random() * Math.PI, 0, Math.PI * 2);
-        context.fill();
-      }
-
-      // Continents (Green/Brown mix)
-      for (let i = 0; i < 50; i++) {
-        const x = Math.random() * 1024;
-        const y = Math.random() * 512;
-        const w = Math.random() * 180 + 40;
-        const h = Math.random() * 120 + 30;
-        
-        // Randomly choose between green and brown for land
-        context.fillStyle = Math.random() > 0.3 ? '#2d5a27' : '#5a4a27';
-        
-        context.beginPath();
-        context.ellipse(x, y, w, h, Math.random() * Math.PI, 0, Math.PI * 2);
-        context.fill();
-      }
-      
-      // Polar Caps (White)
-      context.fillStyle = '#ffffff';
-      // North Pole
-      context.fillRect(0, 0, 1024, 40);
-      // South Pole
-      context.fillRect(0, 472, 1024, 40);
-      
-      // Clouds (Vibrant White)
-      context.fillStyle = 'rgba(255, 255, 255, 0.4)';
-      for (let i = 0; i < 100; i++) {
-        const x = Math.random() * 1024;
-        const y = Math.random() * 512;
-        const r = Math.random() * 30 + 5;
-        context.beginPath();
-        context.arc(x, y, r, 0, Math.PI * 2);
-        context.fill();
-      }
-
-      const texture = new THREE.CanvasTexture(canvas);
-      return texture;
-    };
-
-    const earthTexture = createEarthTexture();
-
-    // Create a procedural moon texture for better visual detail
-    const createMoonTexture = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = 512;
-      canvas.height = 512;
-      const context = canvas.getContext('2d');
-      if (!context) return null;
-
-      context.fillStyle = '#888888';
-      context.fillRect(0, 0, 512, 512);
-
-      // Add "craters"
-      for (let i = 0; i < 500; i++) {
-        const x = Math.random() * 512;
-        const y = Math.random() * 512;
-        const r = Math.random() * 15;
-        const opacity = Math.random() * 0.3;
-        context.fillStyle = `rgba(0, 0, 0, ${opacity})`;
-        context.beginPath();
-        context.arc(x, y, r, 0, Math.PI * 2);
-        context.fill();
-      }
-      
-      const texture = new THREE.CanvasTexture(canvas);
-      return texture;
-    };
-
-    const moonTexture = createMoonTexture();
-    
     const starGeometry = new THREE.BufferGeometry();
     const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.7 });
     const starVertices = [];
