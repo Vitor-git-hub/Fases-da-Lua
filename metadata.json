@@ -1,0 +1,5 @@
+{
+  "name": "Simulador 3D Sol-Terra-Lua",
+  "description": "Um modelo 3D interativo do sistema Sol-Terra-Lua com sombras e fases da Lua.",
+  "requestFramePermissions": []
+}
