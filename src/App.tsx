@@ -299,7 +299,7 @@ export default function App() {
             labelCtx.fillStyle = 'rgba(0, 0, 0, 0.8)'; // More solid background
             labelCtx.roundRect(10, 10, 492, 108, 40);
             labelCtx.fill();
-            labelCtx.strokeStyle = 'rgba(251, 191, 36, 1.0)'; // Solid border
+            labelCtx.strokeStyle = 'rgba(255, 255, 255, 1.0)'; // Solid white border
             labelCtx.lineWidth = 6;
             labelCtx.stroke();
             
@@ -314,7 +314,7 @@ export default function App() {
               labelCtx.font = `bold ${fontSize}px Inter, sans-serif`;
             }
             
-            labelCtx.fillStyle = '#fbbf24';
+            labelCtx.fillStyle = '#ffffff';
             labelCtx.textAlign = 'center';
             labelCtx.textBaseline = 'middle';
             labelCtx.fillText(text, 256, 64);
@@ -548,12 +548,12 @@ export default function App() {
               {/* Moon Phase SVG Visual Aid */}
               <svg width="40" height="40" viewBox="-20 -20 40 40">
                 <circle r="20" fill="#1a1a1a" />
-                <path id="moon-visual-svg-path" d="M 0 -20 A 20 20 0 0 1 0 20 A 0 20 0 0 1 0 -20" fill="#fbbf24" />
+                <path id="moon-visual-svg-path" d="M 0 -20 A 20 20 0 0 1 0 20 A 0 20 0 0 1 0 -20" fill="#ffffff" />
               </svg>
             </div>
             <div className="flex flex-col">
               <span className="text-xs font-bold text-white/60 uppercase tracking-widest">Lua (Satélite Natural)</span>
-              <span ref={phaseTextRef} className="text-base font-black text-yellow-500 uppercase tracking-widest mt-1">Lua Nova</span>
+              <span ref={phaseTextRef} className="text-base font-black text-white uppercase tracking-widest mt-1">Lua Nova</span>
               <p id="phase-description" className="text-sm text-white/60 mt-2 max-w-[280px] leading-relaxed">A Lua está entre a Terra e o Sol. O lado iluminado não é visível da Terra.</p>
             </div>
           </div>
