@@ -26,6 +26,7 @@ export default function App() {
     sun: THREE.Mesh;
     moon: THREE.Mesh;
     hologramGroup: THREE.Group;
+    sunGlow: THREE.Mesh;
   } | null>(null);
 
   const speedRef = useRef(speed);
@@ -89,6 +90,37 @@ export default function App() {
     const textureLoader = new THREE.TextureLoader();
     textureLoader.setCrossOrigin('anonymous');
 
+    // Procedural Sun Texture (Ultra-reliable fallback)
+    const createSunTexture = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 512;
+      const context = canvas.getContext('2d');
+      if (!context) return null;
+
+      const gradient = context.createRadialGradient(256, 256, 0, 256, 256, 256);
+      gradient.addColorStop(0, '#fff5b2');
+      gradient.addColorStop(0.2, '#ffcc33');
+      gradient.addColorStop(0.5, '#ff8800');
+      gradient.addColorStop(1, '#ff4400');
+
+      context.fillStyle = gradient;
+      context.fillRect(0, 0, 512, 512);
+      
+      // Add some noise/granulation
+      for (let i = 0; i < 5000; i++) {
+        const x = Math.random() * 512;
+        const y = Math.random() * 512;
+        const size = Math.random() * 2;
+        context.fillStyle = `rgba(255, 255, 255, ${Math.random() * 0.1})`;
+        context.fillRect(x, y, size, size);
+      }
+
+      return new THREE.CanvasTexture(canvas);
+    };
+
+    const sunTexture = createSunTexture();
+    
     // Real textures from Three.js examples (NASA assets)
     const earthTexture = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_atmos_2048.jpg');
     const moonTexture = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/moon_1024.jpg');
@@ -122,7 +154,10 @@ export default function App() {
     scene.add(new THREE.Points(starGeometry, starMaterial));
 
     const sunGeometry = new THREE.SphereGeometry(SUN_RADIUS, 64, 64);
-    const sunMaterial = new THREE.MeshBasicMaterial({ color: 0xffdd44 });
+    const sunMaterial = new THREE.MeshBasicMaterial({ 
+      map: sunTexture,
+      color: 0xffffff // White color so the texture shows its true colors
+    });
     const sun = new THREE.Mesh(sunGeometry, sunMaterial);
     scene.add(sun);
 
@@ -130,9 +165,22 @@ export default function App() {
     const glowMaterial = new THREE.MeshBasicMaterial({ 
       color: 0xffaa00, 
       transparent: true, 
-      opacity: 0.15 
+      opacity: 0.15,
+      side: THREE.BackSide
     });
-    scene.add(new THREE.Mesh(glowGeometry, glowMaterial));
+    const sunGlow = new THREE.Mesh(glowGeometry, glowMaterial);
+    scene.add(sunGlow);
+
+    // Inner glow for a more intense core
+    const innerGlowGeom = new THREE.SphereGeometry(SUN_RADIUS + 2, 64, 64);
+    const innerGlowMat = new THREE.MeshBasicMaterial({
+      color: 0xffdd44,
+      transparent: true,
+      opacity: 0.3,
+      side: THREE.BackSide
+    });
+    const innerGlow = new THREE.Mesh(innerGlowGeom, innerGlowMat);
+    scene.add(innerGlow);
 
     const earthOrbitGroup = new THREE.Group();
     scene.add(earthOrbitGroup);
@@ -189,7 +237,7 @@ export default function App() {
     moon.add(hologramGroup);
     moonOrbitGroup.add(moon);
 
-    sceneObjects.current = { camera, controls, earthGroup, sun, moon, hologramGroup };
+    sceneObjects.current = { camera, controls, earthGroup, sun, moon, hologramGroup, sunGlow };
 
     const createOrbitPath = (radius: number, color: number) => {
       const curve = new THREE.EllipseCurve(0, 0, radius, radius, 0, 2 * Math.PI, false, 0);
@@ -220,6 +268,12 @@ export default function App() {
         earthOrbitGroup.rotation.y += delta * 0.1 * timeScale;
         earth.rotation.y += delta * 1.5 * timeScale;
         moonOrbitGroup.rotation.y += delta * 0.5 * timeScale;
+        sun.rotation.y += delta * 0.05 * timeScale; // Slow rotation for the sun
+        
+        // Pulsing sun glow
+        if (sceneObjects.current?.sunGlow) {
+          sceneObjects.current.sunGlow.scale.setScalar(1 + Math.sin(elapsed * 2) * 0.02);
+        }
 
         // Update moon phase name every 200ms
         if (elapsed - lastPhaseUpdate > 0.2) {
@@ -340,7 +394,7 @@ export default function App() {
 
   const focusOn = (type: 'sun' | 'earth' | 'moon' | 'earthView') => {
     if (!sceneObjects.current) return;
-    const { camera, controls, earthGroup, sun, moon } = sceneObjects.current;
+    const { camera, controls, earthGroup, sun, moon, sunGlow } = sceneObjects.current;
     
     const targetPos = new THREE.Vector3();
     
