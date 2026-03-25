@@ -25,15 +25,18 @@ export default function App() {
     earthGroup: THREE.Group;
     sun: THREE.Mesh;
     moon: THREE.Mesh;
+    hologramGroup: THREE.Group;
   } | null>(null);
 
   const speedRef = useRef(speed);
   const isPausedRef = useRef(isPaused);
+  const showLabelsRef = useRef(showLabels);
 
   useEffect(() => {
     speedRef.current = speed;
     isPausedRef.current = isPaused;
-  }, [speed, isPaused]);
+    showLabelsRef.current = showLabels;
+  }, [speed, isPaused, showLabels]);
 
   useEffect(() => {
     if (!mountRef.current) return;
@@ -71,7 +74,7 @@ export default function App() {
     controls.maxDistance = 1500;
 
     // --- 2. Lighting ---
-    const sunLight = new THREE.PointLight(0xffffff, 20, 2500); // Even more intensity
+    const sunLight = new THREE.PointLight(0xffffff, 100000, 3000); // Even more intensity for clarity
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.width = 2048;
     sunLight.shadow.mapSize.height = 2048;
@@ -79,10 +82,26 @@ export default function App() {
     sunLight.shadow.camera.far = 2000;
     scene.add(sunLight);
 
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.05); // Lowered slightly for sharper shadows
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.02); // Even lower for maximum contrast
     scene.add(ambientLight);
 
     // --- 3. Objects ---
+    // Label Sprite Canvas Setup
+    const labelCanvas = document.createElement('canvas');
+    labelCanvas.width = 512;
+    labelCanvas.height = 128;
+    const labelCtx = labelCanvas.getContext('2d');
+    const labelTexture = new THREE.CanvasTexture(labelCanvas);
+    const labelSpriteMaterial = new THREE.SpriteMaterial({ 
+      map: labelTexture, 
+      transparent: true,
+      depthTest: false,
+      opacity: 0.9
+    });
+    const labelSprite = new THREE.Sprite(labelSpriteMaterial);
+    labelSprite.scale.set(80, 20, 1); // Reduced scale for a cleaner look
+    labelSprite.position.set(0, 28, 0); // Positioned even higher above the moon
+
     // Create a procedural Earth texture
     const createEarthTexture = () => {
       const canvas = document.createElement('canvas');
@@ -91,28 +110,50 @@ export default function App() {
       const context = canvas.getContext('2d');
       if (!context) return null;
 
-      // Ocean
-      context.fillStyle = '#1a3a6c';
+      // Deep Ocean
+      context.fillStyle = '#0a2a5a';
       context.fillRect(0, 0, 1024, 512);
 
-      // Continents (simplified)
-      context.fillStyle = '#2d5a27';
-      for (let i = 0; i < 40; i++) {
+      // Shallows (lighter blue near coasts)
+      context.fillStyle = '#1a4a8c';
+      for (let i = 0; i < 60; i++) {
         const x = Math.random() * 1024;
         const y = Math.random() * 512;
-        const w = Math.random() * 200 + 50;
-        const h = Math.random() * 150 + 50;
+        const w = Math.random() * 250 + 80;
+        const h = Math.random() * 180 + 60;
+        context.beginPath();
+        context.ellipse(x, y, w, h, Math.random() * Math.PI, 0, Math.PI * 2);
+        context.fill();
+      }
+
+      // Continents (Green/Brown mix)
+      for (let i = 0; i < 50; i++) {
+        const x = Math.random() * 1024;
+        const y = Math.random() * 512;
+        const w = Math.random() * 180 + 40;
+        const h = Math.random() * 120 + 30;
+        
+        // Randomly choose between green and brown for land
+        context.fillStyle = Math.random() > 0.3 ? '#2d5a27' : '#5a4a27';
+        
         context.beginPath();
         context.ellipse(x, y, w, h, Math.random() * Math.PI, 0, Math.PI * 2);
         context.fill();
       }
       
-      // Clouds
-      context.fillStyle = 'rgba(255, 255, 255, 0.3)';
-      for (let i = 0; i < 60; i++) {
+      // Polar Caps (White)
+      context.fillStyle = '#ffffff';
+      // North Pole
+      context.fillRect(0, 0, 1024, 40);
+      // South Pole
+      context.fillRect(0, 472, 1024, 40);
+      
+      // Clouds (Vibrant White)
+      context.fillStyle = 'rgba(255, 255, 255, 0.4)';
+      for (let i = 0; i < 100; i++) {
         const x = Math.random() * 1024;
         const y = Math.random() * 512;
-        const r = Math.random() * 40 + 10;
+        const r = Math.random() * 30 + 5;
         context.beginPath();
         context.arc(x, y, r, 0, Math.PI * 2);
         context.fill();
@@ -214,20 +255,26 @@ export default function App() {
 
     const moonGeometry = new THREE.SphereGeometry(MOON_RADIUS, 128, 128);
     const moonMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0xffffff, // White to show texture clearly
+      color: 0xffffff,
       map: moonTexture,
-      roughness: 0.9,
-      metalness: 0.1,
-      emissive: 0x333333, // Increased for better visibility
-      emissiveIntensity: 0.1 // Increased for better visibility
+      roughness: 0.8,
+      metalness: 0.0,
+      emissive: 0x000000,
+      emissiveIntensity: 0
     });
     const moon = new THREE.Mesh(moonGeometry, moonMaterial);
     moon.position.x = MOON_ORBIT_RADIUS;
     moon.castShadow = true;
     moon.receiveShadow = true;
+    
+    // Add 3D Phase Indicators to Moon
+    const hologramGroup = new THREE.Group();
+    hologramGroup.add(labelSprite);
+    
+    moon.add(hologramGroup);
     moonOrbitGroup.add(moon);
 
-    sceneObjects.current = { camera, controls, earthGroup, sun, moon };
+    sceneObjects.current = { camera, controls, earthGroup, sun, moon, hologramGroup };
 
     const createOrbitPath = (radius: number, color: number) => {
       const curve = new THREE.EllipseCurve(0, 0, radius, radius, 0, 2 * Math.PI, false, 0);
@@ -276,12 +323,36 @@ export default function App() {
           else phase = 'Lua Minguante';
           
           const visualMoon = document.getElementById('moon-visual-svg-path');
-          const hudMoon = document.getElementById('moon-hud-svg-path');
-          const hudEl = document.getElementById('moon-hud');
           
-          if (visualMoon || hudMoon) {
-            // Realistic moon phase using SVG path
-            // Side-to-side movement (vertical terminator)
+          // Update 3D Label Sprite
+          if (labelCtx) {
+            labelCtx.clearRect(0, 0, 512, 128);
+            labelCtx.fillStyle = 'rgba(0, 0, 0, 0.8)'; // More solid background
+            labelCtx.roundRect(10, 10, 492, 108, 40);
+            labelCtx.fill();
+            labelCtx.strokeStyle = 'rgba(251, 191, 36, 1.0)'; // Solid border
+            labelCtx.lineWidth = 6;
+            labelCtx.stroke();
+            
+            const text = phase.toUpperCase();
+            let fontSize = 40; // Smaller font for elegance
+            labelCtx.font = `bold ${fontSize}px Inter, sans-serif`;
+            
+            // Dynamic scaling if text is too long
+            const metrics = labelCtx.measureText(text);
+            if (metrics.width > 450) {
+              fontSize = Math.floor(40 * (450 / metrics.width));
+              labelCtx.font = `bold ${fontSize}px Inter, sans-serif`;
+            }
+            
+            labelCtx.fillStyle = '#fbbf24';
+            labelCtx.textAlign = 'center';
+            labelCtx.textBaseline = 'middle';
+            labelCtx.fillText(text, 256, 64);
+            labelTexture.needsUpdate = true;
+          }
+
+          if (visualMoon) {
             const angle = normalizedAngle;
             const r = 20; 
             const x = Math.cos(angle) * r;
@@ -296,31 +367,6 @@ export default function App() {
             }
             
             if (visualMoon) visualMoon.setAttribute('d', pathD);
-            if (hudMoon) hudMoon.setAttribute('d', pathD);
-          }
-
-          // Update Floating HUD Position
-          if (hudEl && sceneObjects.current) {
-            const moonPos = new THREE.Vector3();
-            sceneObjects.current.moon.getWorldPosition(moonPos);
-            
-            // Project 3D position to 2D screen coordinates
-            const vector = moonPos.clone();
-            vector.project(sceneObjects.current.camera);
-            
-            const x = (vector.x * 0.5 + 0.5) * container.clientWidth;
-            const y = (-(vector.y * 0.5) + 0.5) * container.clientHeight;
-            
-            // Only show if in front of camera
-            if (vector.z < 1) {
-              hudEl.style.display = 'flex';
-              hudEl.style.transform = `translate(-50%, -120%) translate(${x}px, ${y}px)`;
-            } else {
-              hudEl.style.display = 'none';
-            }
-            
-            const hudText = document.getElementById('moon-hud-text');
-            if (hudText) hudText.innerText = phase;
           }
           
           const descEl = document.getElementById('phase-description');
@@ -347,6 +393,10 @@ export default function App() {
       }
 
       controls.update();
+      if (sceneObjects.current) {
+        sceneObjects.current.hologramGroup.visible = showLabelsRef.current;
+      }
+      
       renderer.render(scene, camera);
     });
 
@@ -409,22 +459,6 @@ export default function App() {
     <div className="relative w-full h-screen bg-[#020205] overflow-hidden select-none font-sans">
       <div ref={mountRef} className="absolute inset-0 z-0" />
 
-      {/* Floating Moon HUD */}
-      <div 
-        id="moon-hud" 
-        className="absolute top-0 left-0 z-20 pointer-events-none flex flex-col items-center gap-2 transition-opacity duration-300"
-        style={{ display: 'none' }}
-      >
-        <div className="bg-black/60 backdrop-blur-md border border-white/20 p-2 rounded-2xl flex flex-col items-center shadow-2xl">
-          <svg width="30" height="30" viewBox="-20 -20 40 40">
-            <circle r="20" fill="#1a1a1a" />
-            <path id="moon-hud-svg-path" d="M 0 -20 A 20 20 0 0 1 0 20 A 0 20 0 0 1 0 -20" fill="#fbbf24" />
-          </svg>
-          <span id="moon-hud-text" className="text-[8px] font-black text-yellow-500 uppercase tracking-tighter mt-1">Lua Nova</span>
-        </div>
-        <div className="w-px h-8 bg-gradient-to-b from-white/40 to-transparent" />
-      </div>
-
       {/* UI Overlay */}
       <div className="absolute top-6 left-6 pointer-events-none z-10">
         <motion.div 
@@ -438,8 +472,8 @@ export default function App() {
               <Sun className="text-black" size={28} />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-white tracking-tight">Cosmos 3D</h1>
-              <p className="text-[10px] text-white/40 uppercase tracking-[0.2em] font-black">Solar Simulator</p>
+              <h1 className="text-2xl font-bold text-white tracking-tight">Cosmos 3D</h1>
+              <p className="text-xs text-white/40 uppercase tracking-[0.2em] font-black">Solar Simulator</p>
             </div>
           </div>
 
@@ -447,8 +481,8 @@ export default function App() {
           <div className="space-y-8">
             <div className="space-y-4">
               <div className="flex justify-between items-end">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-white/30">Velocidade do Tempo</span>
-                <span className="text-sm font-mono text-yellow-500 font-bold">{speed.toFixed(1)}x</span>
+                <span className="text-xs font-bold uppercase tracking-widest text-white/30">Velocidade do Tempo</span>
+                <span className="text-base font-mono text-yellow-500 font-bold">{speed.toFixed(1)}x</span>
               </div>
               <input 
                 type="range" 
@@ -471,20 +505,20 @@ export default function App() {
                 }`}
               >
                 {isPaused ? <Play size={24} fill="currentColor" /> : <Pause size={24} fill="currentColor" />}
-                <span className="text-[10px] font-black uppercase tracking-widest">{isPaused ? 'Iniciar' : 'Pausar'}</span>
+                <span className="text-xs font-black uppercase tracking-widest">{isPaused ? 'Iniciar' : 'Pausar'}</span>
               </button>
               <button 
                 onClick={() => { setSpeed(1); setIsPaused(false); }}
                 className="flex flex-col items-center justify-center gap-2 p-5 rounded-3xl bg-white/5 border border-white/10 hover:bg-white/10 text-white/80 transition-all duration-300"
               >
                 <RotateCcw size={24} />
-                <span className="text-[10px] font-black uppercase tracking-widest">Iniciar</span>
+                <span className="text-xs font-black uppercase tracking-widest">Iniciar</span>
               </button>
             </div>
 
             <div className="pt-6 border-t border-white/5">
               <div className="flex items-center justify-between mb-4">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-white/30">Visualização</span>
+                <span className="text-xs font-bold uppercase tracking-widest text-white/30">Visualização</span>
                 <button 
                   onClick={() => setShowLabels(!showLabels)}
                   className={`p-2 rounded-lg transition-colors ${showLabels ? 'text-yellow-500 bg-yellow-500/10' : 'text-white/20 hover:bg-white/5'}`}
@@ -495,19 +529,19 @@ export default function App() {
               <div className="grid grid-cols-3 gap-2">
                 <button 
                   onClick={() => focusOn('sun')}
-                  className="p-3 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 text-[10px] font-bold uppercase tracking-widest text-white/60 transition-all"
+                  className="p-3 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 text-xs font-bold uppercase tracking-widest text-white/60 transition-all"
                 >
                   Sol
                 </button>
                 <button 
                   onClick={() => focusOn('earth')}
-                  className="p-3 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 text-[10px] font-bold uppercase tracking-widest text-white/60 transition-all"
+                  className="p-3 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 text-xs font-bold uppercase tracking-widest text-white/60 transition-all"
                 >
                   Terra
                 </button>
                 <button 
                   onClick={() => focusOn('moon')}
-                  className="p-3 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 text-[10px] font-bold uppercase tracking-widest text-white/60 transition-all"
+                  className="p-3 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 text-xs font-bold uppercase tracking-widest text-white/60 transition-all"
                 >
                   Lua
                 </button>
@@ -515,7 +549,7 @@ export default function App() {
               <div className="grid grid-cols-1 gap-2 mt-2">
                 <button 
                   onClick={() => focusOn('earthView')}
-                  className="p-3 rounded-2xl bg-yellow-500/10 border border-yellow-500/20 hover:bg-yellow-500/20 text-[10px] font-bold uppercase tracking-widest text-yellow-500 transition-all"
+                  className="p-3 rounded-2xl bg-yellow-500/10 border border-yellow-500/20 hover:bg-yellow-500/20 text-xs font-bold uppercase tracking-widest text-yellow-500 transition-all"
                 >
                   Vista da Terra (Ver Fases)
                 </button>
@@ -534,11 +568,11 @@ export default function App() {
         >
           <div className="flex items-center gap-4">
             <div className="w-3 h-3 rounded-full bg-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.5)]" />
-            <span className="text-[10px] font-bold text-white/60 uppercase tracking-widest">Sol (Centro de Massa)</span>
+            <span className="text-xs font-bold text-white/60 uppercase tracking-widest">Sol (Centro de Massa)</span>
           </div>
           <div className="flex items-center gap-4">
             <div className="w-3 h-3 rounded-full bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.5)]" />
-            <span className="text-[10px] font-bold text-white/60 uppercase tracking-widest">Terra (Órbita Elíptica)</span>
+            <span className="text-xs font-bold text-white/60 uppercase tracking-widest">Terra (Órbita Elíptica)</span>
           </div>
           <div className="flex items-center gap-4">
             <div className="relative w-12 h-12 rounded-full bg-gray-900 border border-white/10 flex items-center justify-center overflow-hidden">
@@ -549,9 +583,9 @@ export default function App() {
               </svg>
             </div>
             <div className="flex flex-col">
-              <span className="text-[10px] font-bold text-white/60 uppercase tracking-widest">Lua (Satélite Natural)</span>
-              <span ref={phaseTextRef} className="text-[9px] font-bold text-yellow-500 uppercase tracking-widest mt-1">Lua Nova</span>
-              <p id="phase-description" className="text-[8px] text-white/30 mt-1 max-w-[150px] leading-tight">A Lua está entre a Terra e o Sol. O lado iluminado não é visível da Terra.</p>
+              <span className="text-xs font-bold text-white/60 uppercase tracking-widest">Lua (Satélite Natural)</span>
+              <span ref={phaseTextRef} className="text-base font-black text-yellow-500 uppercase tracking-widest mt-1">Lua Nova</span>
+              <p id="phase-description" className="text-sm text-white/60 mt-2 max-w-[280px] leading-relaxed">A Lua está entre a Terra e o Sol. O lado iluminado não é visível da Terra.</p>
             </div>
           </div>
         </motion.div>
@@ -562,10 +596,10 @@ export default function App() {
         <div className="bg-white/5 backdrop-blur-md px-8 py-4 rounded-full border border-white/10 flex items-center gap-8">
           <div className="flex items-center gap-3">
             <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            <span className="text-[10px] font-bold text-white/60 uppercase tracking-widest">Motor 3D Ativo</span>
+            <span className="text-xs font-bold text-white/60 uppercase tracking-widest">Motor 3D Ativo</span>
           </div>
           <div className="w-px h-4 bg-white/10" />
-          <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.3em]">
+          <p className="text-xs font-bold text-white/30 uppercase tracking-[0.3em]">
             Girar • Zoom • Panorâmica
           </p>
         </div>
