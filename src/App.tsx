@@ -388,7 +388,7 @@ export default function App() {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-white tracking-tight">Cosmos 3D</h1>
-              <p className="text-xs text-white/40 uppercase tracking-[0.2em] font-black">Solar Simulator</p>
+              <p className="text-xs text-white/40 uppercase tracking-[0.2em] font-black">Simulador de fases da Lua</p>
             </div>
           </div>
 
@@ -427,7 +427,7 @@ export default function App() {
                 className="flex flex-col items-center justify-center gap-2 p-5 rounded-3xl bg-white/5 border border-white/10 hover:bg-white/10 text-white/80 transition-all duration-300"
               >
                 <RotateCcw size={24} />
-                <span className="text-xs font-black uppercase tracking-widest">Iniciar</span>
+                <span className="text-xs font-black uppercase tracking-widest">Reiniciar</span>
               </button>
             </div>
 
